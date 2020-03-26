@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf};
 use std::fs;
 use std::io;
+use std::path::Path;
 
 pub enum FsItem {
     Dir(String),
@@ -9,7 +9,8 @@ pub enum FsItem {
 }
 
 /// declare what dir you want and we do next for you
-pub fn declare_dir(root: PathBuf, fs: Vec<FsItem>) -> Result<(), failure::Error> {
+pub fn declare_dir<P: AsRef<Path>>(root: P, fs: Vec<FsItem>) -> Result<(), failure::Error> {
+    let root = root.as_ref().to_path_buf();
     if !root.exists() {
         std::fs::create_dir_all(&root)?;
     }
@@ -125,7 +126,6 @@ pub fn zip_dir<S: AsRef<Path>, Z: AsRef<Path>>(
     Ok(())
 }
 
-
 pub fn unzip<Z: AsRef<Path>, D: AsRef<Path>>(
     zip_path: Z,
     dst_dir: D,
@@ -177,29 +177,23 @@ mod tests {
         let tmp_dir = TempDir::new("example").unwrap();
         let home = tmp_dir.path();
         let root = home.join("a");
+
         declare_dir(
-            root.clone(),
+            &root,
             vec![
                 FsItem::Dir("1".to_string()),
                 FsItem::StringFile("1.txt".to_string(), "ssssss".to_string()),
             ],
         )
         .unwrap();
+
         let unzip_dir = home.join("a-1/a");
         let zip_path = home.join("a.zip");
-        zip_dir(root.clone(), zip_path.clone()).unwrap();
-        unzip(zip_path.clone(), unzip_dir.clone()).unwrap();
-        let ret = dir_eq(unzip_dir, root).unwrap();
-        assert_eq!(ret, true);
-    }
-    #[test]
-    fn test_dir_eq() {
-        let ret = dir_eq(
-            r#"C:\Users\developer\work\saas\win_driver"#,
-            r#"C:\Users\developer\work\saas\a\win_driver"#,
-        )
-        .unwrap();
 
+        zip_dir(&root, &zip_path).unwrap();
+        unzip(&zip_path, &unzip_dir).unwrap();
+
+        let ret = dir_eq(&unzip_dir, &root).unwrap();
         assert_eq!(ret, true);
     }
 }
